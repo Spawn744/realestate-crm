@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
@@ -21,7 +22,14 @@ class Property(models.Model):
         ('sold', 'Sold'),
         ('pending', 'Pending'),
     ])
+    description = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        return super().save(*args, **kwargs)
+
 
 class Lead(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE)

@@ -10,19 +10,29 @@ const handleAsyncThunkError = (error) => {
 // Unified properties fetch logic
 export const fetchProperties = createAsyncThunk(
   'properties/fetchAll',
-  async (_, { getState }) => {
-    const { auth: { token } } = getState();
-    console.log("Fetching all properties - Token:", token);
-
-    if (!token) throw new Error("Authorization token is missing");
+  async (_, { getState, rejectWithValue }) => {
+    // More robust token access
+    const token = getState()?.auth?.token || localStorage.getItem('access_token');
+    
+    if (!token) {
+      console.error('No token available in Redux or localStorage');
+      throw new Error("Authorization token is missing");
+    }
 
     try {
       const response = await axios.get('/crm_api/properties/', {
+        timeout: 10000,
         headers: { Authorization: `Bearer ${token}` }
       });
       return response.data;
     } catch (error) {
-      return handleAsyncThunkError(error);
+      if (error.code === 'ECONNABORTED') {
+        return rejectWithValue('Request timeout - server is not responding');
+      }
+      if (!error.response) {
+        return rejectWithValue('Network error - no server response');
+      }
+      return rejectWithValue(error.response.data);
     }
   }
 );
@@ -75,7 +85,7 @@ const propertySlice = createSlice({
       })
       .addCase(fetchProperties.rejected, (state, action) => {
         state.fetchPropertiesStatus = 'failed';
-        state.error = action.error.message;
+        state.error = action.payload?.message || action.error.message || 'Failed to fetch properties';
       })
       
       // Fetch single property
@@ -89,7 +99,7 @@ const propertySlice = createSlice({
       })
       .addCase(fetchProperty.rejected, (state, action) => {
         state.fetchPropertyStatus = 'failed';
-        state.error = action.error.message;
+        state.error = action.payload?.message || action.error.message || 'Failed to fetch properties';
       });
   }
 });

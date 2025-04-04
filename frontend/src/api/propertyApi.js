@@ -31,6 +31,7 @@ export const createProperty = async (propertyData, token) => {
   try {
     const response = await axios.post('/crm_api/properties/', propertyData, {
       headers: { Authorization: `Bearer ${token}` },
+      timeout: 40000
     });
     return response.data;
   } catch (error) {

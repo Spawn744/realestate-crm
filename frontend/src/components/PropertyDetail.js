@@ -1,29 +1,51 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Card, CardMedia, CardContent, Typography, Grid, Chip, Button, Box } from '@mui/material';
+import { 
+  Card, 
+  CardMedia, 
+  CardContent, 
+  Typography, 
+  Grid, 
+  Chip, 
+  Button, 
+  Box 
+} from '@mui/material';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
-import { fetchProperty } from '../store/slices/propertySlice';
+import { clearCurrentProperty, fetchProperty } from '../store/slices/propertySlice';
 
 const PropertyDetail = () => {
   const { propertyId } = useParams();
   const dispatch = useDispatch();
-  const property = useSelector((state) => 
-    state.properties.items.find(p => p.id === parseInt(propertyId))
-  );
-
+  const { currentProperty } = useSelector((state) => state.properties.items);
+  
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: 'AIzaSyCs9b3PPBIMPkMczZdNa86VlOxfKhl6f2s',
- });
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+  });
 
   useEffect(() => {
-    console.log("Property ID:",propertyId)
-    if (propertyId && !property) {
+    if (propertyId) {
       dispatch(fetchProperty(propertyId));
     }
-  }, [dispatch, propertyId, property]);
+    
+    return () => {
+      dispatch(clearCurrentProperty());
+    };
+  }, [dispatch, propertyId]);
 
-  if (!property) return <div>Loading...</div>;
+  if (!currentProperty) {
+    return <div>Property not found</div>;
+  }
+
+  const { 
+    title, 
+    image, 
+    location, 
+    status, 
+    description, 
+    lat, 
+    lng 
+  } = currentProperty;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -31,37 +53,48 @@ const PropertyDetail = () => {
         <CardMedia
           component="img"
           height="400"
-          image={property.image || '/placeholder-property.jpg'}
-          alt={property.title}
+          image={image || '/placeholder-property.jpg'}
+          alt={title}
         />
+        
         <CardContent>
-          <Typography gutterBottom variant="h4">{property.title}</Typography>
+          <Typography gutterBottom variant="h4">
+            {title}
+          </Typography>
+          
           <Grid container spacing={2}>
             <Grid item xs={12} md={8}>
               <Typography variant="h6" color="text.secondary">
-                {property.location}
+                {location}
               </Typography>
+              
               <Chip 
-                label={property.status.toUpperCase()} 
-                color={property.status === 'available' ? 'success' : 'error'}
+                label={status.toUpperCase()} 
+                color={status === 'available' ? 'success' : 'error'}
                 sx={{ mt: 1, mb: 2 }}
               />
+              
               <Typography variant="body1" paragraph>
-                {property.description || 'No description available'}
+                {description || 'No description available'}
               </Typography>
+              
               <Button variant="contained" color="primary">
                 Schedule Viewing
               </Button>
             </Grid>
+            
             <Grid item xs={12} md={4}>
               {isLoaded && (
                 <GoogleMap
                   zoom={14}
-                  center={{ lat: property.lat, lng: property.lng }}
+                  center={{ lat, lng }}
                   mapContainerClassName="map-container"
-                  mapContainerStyle={{ height: '300px', width: '100%' }}
+                  mapContainerStyle={{ 
+                    height: '300px', 
+                    width: '100%' 
+                  }}
                 >
-                  <Marker position={{ lat: property.lat, lng: property.lng }} />
+                  <Marker position={{ lat, lng }} />
                 </GoogleMap>
               )}
             </Grid>
@@ -70,7 +103,6 @@ const PropertyDetail = () => {
       </Card>
     </Box>
   );
-  
 };
 
 export default PropertyDetail;

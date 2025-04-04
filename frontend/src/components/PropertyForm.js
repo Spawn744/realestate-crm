@@ -46,7 +46,7 @@ export default function PropertyForm() {
         } else {
           // Use createProperty function for creation
           const data = await createProperty(values, token);
-          console.log('Created property resonse:', data);
+          console.log('Created property response:', data);
           if (data && data.id) {
             navigate(`/properties/${data.id}`);
           }else {
@@ -79,8 +79,7 @@ export default function PropertyForm() {
     };
 
     fetchProperty();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isEdit, navigate]);
+  }, [formik, id, isEdit, navigate]);
 
   return (
     <Card sx={{ maxWidth: 800, margin: 'auto', mt: 4 }}>

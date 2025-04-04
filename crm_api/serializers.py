@@ -77,9 +77,8 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = '__all__'
-        extra_kwargs = {
-            'agent': {'read_only': True}
-        }
+        read_only_fields = ('created_at','updated_at', 'agent', 'description')
+        
 
     def get_image_urls(self, obj):
         return [image.image.url for image in obj.images.all()]

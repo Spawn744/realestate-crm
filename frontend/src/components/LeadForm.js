@@ -1,11 +1,22 @@
 import React, { useEffect } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { TextField, Button, Container, Typography, Grid, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { 
+  TextField, 
+  Button, 
+  Container, 
+  Typography, 
+  Grid, 
+  MenuItem, 
+  Select, 
+  InputLabel, 
+  FormControl,
+  LinearProgress
+} from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
-import { addLead } from '../store/slices/leadSlice';
 import { useNavigate } from 'react-router-dom';
-import { fetchProperties } from '../store/slices/propertySlice'
+import { addLead } from '../store/slices/leadSlice';
+import { fetchProperties } from '../store/slices/propertySlice';
 
 const validationSchema = Yup.object({
   name: Yup.string().required('Name is required'),
@@ -13,7 +24,7 @@ const validationSchema = Yup.object({
   phone: Yup.string().required('Phone number is required'),
   property: Yup.number()
     .required('Property selection is required')
-    .positive('invalid property selection'),
+    .positive('Invalid property selection'),
   status: Yup.string().required('Status is required'),
   notes: Yup.string(),
 });
@@ -21,31 +32,44 @@ const validationSchema = Yup.object({
 export default function LeadForm() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { properties } = useSelector((state) => state.properties )
-  
-  useEffect(() =>{
-    dispatch(fetchProperties());
-  }, [dispatch] )
+  const { properties, loading } = useSelector((state) => state.properties);
+
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        await dispatch(fetchProperties()).unwrap();
+      } catch (error) {
+        console.error('Failed to load properties:', error);
+        if (error?.includes('token') || error?.includes('401')) {
+          navigate('/login');
+        }
+      }
+    };
+
+    if (!properties?.length) loadProperties();
+  }, [dispatch, navigate, properties]);
+
   const formik = useFormik({
     initialValues: {
       name: '',
       email: '',
       phone: '',
-      property: 'null',
+      property: '',
       status: 'new',
       notes: '',
     },
     validationSchema,
-    onSubmit: async (values) => {
+    onSubmit: async (values, { setErrors }) => {
       try {
-        // Dispatch the createLead thunk; unwrap to handle errors if needed
         await dispatch(addLead(values)).unwrap();
         navigate('/leads');
       } catch (error) {
         console.error("Lead creation failed:", error);
-        if (error.message.includes?.("property")) {
-          formik.setFieldError('property', 'Please select a valid property');
-        }
+        setErrors({
+          property: error.message?.includes("property") 
+            ? 'Please select a valid property' 
+            : 'Submission failed. Please try again.'
+        });
       }
     },
   });
@@ -55,12 +79,14 @@ export default function LeadForm() {
       <Typography variant="h4" gutterBottom>
         Create New Lead
       </Typography>
+      
       <form onSubmit={formik.handleSubmit}>
         <Grid container spacing={2}>
+          {/* Name Field */}
           <Grid item xs={12}>
             <TextField
-              label="Name"
               fullWidth
+              label="Name"
               name="name"
               value={formik.values.name}
               onChange={formik.handleChange}
@@ -68,11 +94,12 @@ export default function LeadForm() {
               helperText={formik.touched.name && formik.errors.name}
             />
           </Grid>
-          
+
+          {/* Email Field */}
           <Grid item xs={12}>
             <TextField
-              label="Email"
               fullWidth
+              label="Email"
               name="email"
               value={formik.values.email}
               onChange={formik.handleChange}
@@ -80,10 +107,12 @@ export default function LeadForm() {
               helperText={formik.touched.email && formik.errors.email}
             />
           </Grid>
+
+          {/* Phone Field */}
           <Grid item xs={12}>
             <TextField
-              label="Phone"
               fullWidth
+              label="Phone"
               name="phone"
               value={formik.values.phone}
               onChange={formik.handleChange}
@@ -91,21 +120,39 @@ export default function LeadForm() {
               helperText={formik.touched.phone && formik.errors.phone}
             />
           </Grid>
+
+          {/* Property Select */}
           <Grid item xs={12}>
             <FormControl fullWidth error={formik.touched.property && Boolean(formik.errors.property)}>
-              <InputLabel>Property</InputLabel>
+              <InputLabel id="property-select-label">Property</InputLabel>
               <Select
+                labelId="property-select-label"
+                inputProps={{ 'data-testid': 'property-select' }}
                 name="property"
                 value={formik.values.property ?? ''}
-                onChange={(e) => formik.setFieldValue('property', Number(e.target.value))}
-                label='Property'
+                onChange={(e) => {
+                  console.log('Selected value:', e.target.value); // Debug log
+                  formik.setFieldValue('property', Number(e.target.value));
+                }}
+                label="Property"
+                disabled={loading || !properties?.length}
               >
-                <MenuItem value= "" disabled>Select a property</MenuItem>
-                {properties?.map((property) => (
-                  <MenuItem key={property.id} value={property.id}>
-                    {property.title} {/* Adjust based on your Property model fields */}
-                  </MenuItem>
-                ))}
+                {loading ? (
+                  <MenuItem disabled>Loading properties...</MenuItem>
+                ) : properties?.length ? (
+                  [
+                    <MenuItem key="empty" value="" disabled>
+                      Select a property
+                    </MenuItem>,
+                    ...properties.map((property) => (
+                      <MenuItem key={property.id} value={property.id}>
+                        {property.title} (ID: {property.id})
+                      </MenuItem>
+                    ))
+                  ]
+                ) : (
+                  <MenuItem disabled>No properties available</MenuItem>
+                )}
               </Select>
               {formik.touched.property && formik.errors.property && (
                 <Typography color="error" variant="body2">
@@ -114,10 +161,22 @@ export default function LeadForm() {
               )}
             </FormControl>
           </Grid>
+
+          {/* Loading State */}
+          {loading && (
+            <Grid item xs={12}>
+              <LinearProgress />
+              <Typography variant="body2" align="center">
+                Loading properties...
+              </Typography>
+            </Grid>
+          )}
+
+          {/* Status Field */}
           <Grid item xs={12}>
             <TextField
-              label="Status"
               fullWidth
+              label="Status"
               name="status"
               value={formik.values.status}
               onChange={formik.handleChange}
@@ -125,10 +184,12 @@ export default function LeadForm() {
               helperText={formik.touched.status && formik.errors.status}
             />
           </Grid>
+
+          {/* Notes Field */}
           <Grid item xs={12}>
             <TextField
-              label="Notes"
               fullWidth
+              label="Notes"
               name="notes"
               value={formik.values.notes}
               onChange={formik.handleChange}
@@ -136,9 +197,16 @@ export default function LeadForm() {
               rows={4}
             />
           </Grid>
+
+          {/* Submit Button */}
           <Grid item xs={12}>
-            <Button type="submit" variant="contained" fullWidth>
-              Create Lead
+            <Button 
+              type="submit" 
+              variant="contained" 
+              fullWidth
+              disabled={formik.isSubmitting}
+            >
+              {formik.isSubmitting ? 'Creating...' : 'Create Lead'}
             </Button>
           </Grid>
         </Grid>

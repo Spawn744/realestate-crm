@@ -1,10 +1,10 @@
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, render
 from rest_framework import viewsets, permissions, generics
-from .models import Property, Lead, Appointment
+from .models import Property, Lead, Appointment, PropertyImage
 from .serializers import PropertySerializer, LeadSerializer, UserSerializer
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
@@ -32,7 +32,7 @@ class UserProfileView(APIView):
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
-    permission_classes = [ AllowAny ]
+    permission_classes = [ IsAuthenticated ]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -69,7 +69,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Property.objects.filter(agent=self.request.user)
@@ -80,10 +80,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         try:
             for image in images:
-                PropertyImage.objects.create(property=property, image=image)
+                self.PropertyImage(property, image)
             return Response({'status': 'images uploaded'}, status=201)
         except Exception as e:
             return Response({'message': str(e)}, status=400)
+
+    def PropertyImage(self, property, image):
+        PropertyImage.objects.create(property=property, image=image)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -97,7 +100,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all()
     serializer_class = LeadSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Lead.objects.filter(property__agent=self.request.user)

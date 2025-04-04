@@ -1,6 +1,7 @@
+/* eslint-disable react/jsx-no-undef */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TextField, Button, Container } from '@mui/material';
+import { TextField, Button, Container,Box, Link } from '@mui/material';
 import axios from '../api/axios';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../store/slices/authSlice';
@@ -48,6 +49,11 @@ export default function Login() {
           Login
         </Button>
       </form>
+      <Box mt={2} textAlign="center">
+        <Link href="/register" variant="body2">
+            Don't have an account? Register here
+        </Link>
+      </Box>
     </Container>
   );
 }
